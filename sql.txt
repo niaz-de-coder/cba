@@ -1,0 +1,67 @@
+-- Create database
+CREATE DATABASE IF NOT EXISTS cba;
+USE cba;
+
+-- User table
+CREATE TABLE IF NOT EXISTS user_list (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(100) UNIQUE,
+    fullname VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    country_code VARCHAR(10),
+    mobile VARCHAR(20),
+    address TEXT,
+    dob DATE,
+    password VARCHAR(255) NOT NULL,
+    gender VARCHAR(20),
+    policy_agreed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Login log table
+CREATE TABLE IF NOT EXISTS log_time (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    email VARCHAR(100),
+    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert a test user (password: test123)
+INSERT INTO user_list (user_id, fullname, email, country_code, mobile, address, dob, password, policy_agreed) 
+VALUES ('user_123456', 'Test User', 'test@example.com', '1', '1234567890', '123 Test St', '1990-01-01', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE);
+
+
+-- Create office_list table
+CREATE TABLE IF NOT EXISTS office_list (
+    id INT(11) PRIMARY KEY AUTO_INCREMENT,
+    business_name VARCHAR(255) NOT NULL,
+    business_logo VARCHAR(500),
+    business_email VARCHAR(255) NOT NULL UNIQUE,
+    office_address TEXT NOT NULL,
+    country_code VARCHAR(10) NOT NULL,
+    contact_number VARCHAR(20) NOT NULL,
+    creation_date DATETIME NOT NULL,
+    purchase_date DATETIME NOT NULL,
+    founder_email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_business_email (business_email),
+    INDEX idx_founder_email (founder_email)
+);
+
+-- Create office_request table
+CREATE TABLE IF NOT EXISTS office_request (
+    id INT(11) PRIMARY KEY AUTO_INCREMENT,
+    user_email VARCHAR(255) NOT NULL,
+    status ENUM('Yes', 'No', 'ban', 'waiting') DEFAULT 'waiting',
+    position VARCHAR(50) NOT NULL DEFAULT 'member',
+    full_name VARCHAR(255) NOT NULL,
+    mobile_number VARCHAR(20) NOT NULL,
+    office_email VARCHAR(255) NOT NULL,
+    request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_office (user_email, office_email),
+    INDEX idx_user_email (user_email),
+    INDEX idx_office_email (office_email),
+    INDEX idx_status (status)
+);
+
