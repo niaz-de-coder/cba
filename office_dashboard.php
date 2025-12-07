@@ -1,12 +1,54 @@
+<?php
+// office_dashboard.php
+require_once 'config.php';
+check_office_login(); // Ensure user is logged into an office
+
+// Get office information from database
+$office_id = $_SESSION['office_id'];
+$office_sql = "SELECT * FROM office_list WHERE id = '$office_id'";
+$office_result = mysqli_query($conn, $office_sql);
+$office = mysqli_fetch_assoc($office_result);
+
+// Calculate subscription days
+$purchase_date = new DateTime($office['purchase_date']);
+$current_date = new DateTime();
+$interval = $current_date->diff($purchase_date);
+$days_left = 30 - $interval->days; // Assuming 30-day subscription
+if ($days_left < 0) $days_left = 0;
+
+// Get user information
+$user_id = $_SESSION['user_id'];
+$user_sql = "SELECT * FROM user_list WHERE id = '$user_id'";
+$user_result = mysqli_query($conn, $user_sql);
+$user = mysqli_fetch_assoc($user_result);
+
+// Get business logo path
+$business_logo = !empty($office['business_logo']) ? $office['business_logo'] : 'assets/default-logo.png';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consistent Business Assistant - Dashboard</title>
+    <title><?php echo htmlspecialchars($office['business_name']); ?> - Office Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Reset and Base Styles */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ffffff;
+            --dark: #2c3e50;
+            --gray: #95a5a6;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --info: #17a2b8;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --border: #e9ecef;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,69 +56,44 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --accent: #e74c3c;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
-            --gray: #95a5a6;
-            --success: #2ecc71;
-            --warning: #f39c12;
-        }
-
         body {
+            background-color: var(--background);
             color: #333;
             line-height: 1.6;
-            background-color: #f5f7fa;
+            padding-top: 80px; /* Space for fixed nav */
         }
 
-        .container {
-            width: 90%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Header Styles */
-        header {
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: sticky;
+        /* Fixed Navigation */
+        .office-nav {
+            position: fixed;
             top: 0;
-            z-index: 100;
-        }
-
-        .header-container {
+            left: 0;
+            width: 100%;
+            background-color: var(--light);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
+            padding: 0 30px;
+            height: 80px;
         }
 
-        .logo {
+        .nav-left {
             display: flex;
             align-items: center;
+            gap: 20px;
         }
 
-        .logo img {
+        .website-logo {
             height: 50px;
-            width: 50px;
-            margin-right: 10px;
-            background-color: var(--primary);
-            border-radius: 8px;
-            padding: 5px;
+            width: auto;
         }
 
-        .logo h1 {
-            font-size: 1.5rem;
+        .office-name {
+            font-size: 1.4rem;
+            font-weight: 600;
             color: var(--primary);
-        }
-
-        .motto {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-top: 3px;
         }
 
         .nav-right {
@@ -85,301 +102,274 @@
             gap: 20px;
         }
 
-        .notification-icon, .office-logo {
+        .nav-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            background-color: var(--background);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            position: relative;
             transition: all 0.3s;
-        }
-
-        .notification-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background-color: var(--light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--dark);
-        }
-
-        .notification-icon:hover {
-            background-color: #e0e7ed;
-            transform: scale(1.05);
-        }
-
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: var(--accent);
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .office-logo img {
-            height: 45px;
-            width: 45px;
-            border-radius: 8px;
+            color: var(--primary);
+            font-size: 1.2rem;
             border: 2px solid transparent;
+        }
+
+        .nav-icon:hover {
+            background-color: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .office-logo-container {
+            position: relative;
+        }
+
+        .office-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 3px solid var(--border);
             transition: all 0.3s;
         }
 
-        .office-logo:hover img {
+        .office-logo:hover {
+            transform: scale(1.05);
             border-color: var(--secondary);
         }
 
-        .dropdown-menu {
+        .office-dropdown {
             position: absolute;
-            top: 55px;
+            top: 60px;
             right: 0;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background-color: var(--light);
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             width: 200px;
-            padding: 10px 0;
+            padding: 15px 0;
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
             transition: all 0.3s;
-            z-index: 1000;
+            z-index: 1001;
         }
 
-        .dropdown-menu.active {
+        .office-dropdown.active {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
         }
 
-        .dropdown-menu ul {
-            list-style: none;
-        }
-
-        .dropdown-menu li {
+        .office-dropdown button {
+            width: 100%;
             padding: 12px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--dark);
+            font-size: 0.95rem;
             transition: background-color 0.3s;
         }
 
-        .dropdown-menu li:hover {
-            background-color: #f5f7fa;
+        .office-dropdown button:hover {
+            background-color: var(--background);
         }
 
-        .dropdown-menu a {
-            color: var(--dark);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-
-        .dropdown-menu i {
-            margin-right: 10px;
+        .office-dropdown i {
             color: var(--secondary);
             width: 20px;
-            text-align: center;
         }
 
         /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
         .main-content {
-            padding: 30px 0;
+            padding: 40px 0;
         }
 
-        /* Subscription Banner */
-        .subscription-banner {
-            background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+        /* Subscription Section */
+        .subscription-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
-            padding: 25px 30px;
-            border-radius: 12px;
+            border-radius: 20px;
+            padding: 40px;
             margin-bottom: 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.2);
+            text-align: center;
         }
 
-        .banner-content h2 {
-            font-size: 1.8rem;
-            margin-bottom: 8px;
+        .subscription-info h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
-        .banner-content p {
-            font-size: 1.1rem;
+        .days-left {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--warning);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            margin: 10px 0;
+        }
+
+        .subscription-message {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
             opacity: 0.9;
         }
 
-        .pay-button {
-            background-color: white;
-            color: var(--warning);
+        .pay-now-btn {
+            background-color: var(--success);
+            color: white;
             border: none;
-            padding: 14px 30px;
+            padding: 15px 40px;
             border-radius: 50px;
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
         }
 
-        .pay-button:hover {
+        .pay-now-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.4);
         }
 
         /* Departments Section */
-        .departments-section {
-            margin-bottom: 50px;
-        }
-
-        .section-title {
-            font-size: 2.2rem;
-            color: var(--primary);
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .departments-container {
+        .departments-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 30px;
+            margin-top: 40px;
         }
 
         .department-card {
-            background-color: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            text-align: center;
         }
 
         .department-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .department-header {
-            padding: 25px 25px 20px;
-            border-bottom: 1px solid #eee;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+            border-color: var(--secondary);
         }
 
         .department-icon {
-            width: 70px;
-            height: 70px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
-            font-size: 2rem;
+            margin: 0 auto 20px;
             color: white;
+            font-size: 2rem;
         }
 
-        .management .department-icon {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-        }
-
-        .marketing .department-icon {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-        }
-
-        .finance .department-icon {
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        }
-
-        .department-header h3 {
-            font-size: 1.6rem;
+        .department-card h3 {
+            font-size: 1.5rem;
             color: var(--primary);
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
-        .department-header p {
+        .department-card p {
             color: var(--gray);
-        }
-
-        .department-content {
-            padding: 25px;
-            flex-grow: 1;
-        }
-
-        .features-list {
-            list-style: none;
             margin-bottom: 25px;
+            line-height: 1.5;
         }
 
-        .features-list li {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: flex-start;
-        }
-
-        .features-list i {
-            color: var(--success);
-            margin-right: 10px;
-            margin-top: 3px;
-            flex-shrink: 0;
-        }
-
-        .enter-button {
-            display: block;
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
+        .entry-btn {
+            background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            text-align: center;
-            text-decoration: none;
+            width: 100%;
         }
 
-        .enter-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        .entry-btn:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
         }
 
-        /* Notification Panel */
-        .notification-panel {
+        /* Modal Styles */
+        .modal {
+            display: none;
             position: fixed;
             top: 0;
-            right: -400px;
-            width: 380px;
-            height: 100vh;
-            background-color: white;
-            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 1000;
-            padding: 25px;
-            overflow-y: auto;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
         }
 
-        .notification-panel.active {
-            right: 0;
+        .modal.active {
+            display: flex;
         }
 
-        .panel-header {
+        .modal-content {
+            background-color: var(--light);
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            animation: modalSlide 0.3s ease;
+        }
+
+        @keyframes modalSlide {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 2px solid var(--border);
         }
 
-        .panel-header h3 {
+        .modal-header h3 {
             font-size: 1.5rem;
             color: var(--primary);
         }
 
-        .close-panel {
+        .close-modal {
             background: none;
             border: none;
             font-size: 1.5rem;
@@ -388,242 +378,221 @@
             transition: color 0.3s;
         }
 
-        .close-panel:hover {
+        .close-modal:hover {
             color: var(--accent);
         }
 
-        .notification-item {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            background-color: #f9f9f9;
-            border-left: 4px solid var(--secondary);
-        }
-
-        .notification-item.unread {
-            background-color: #e8f4fc;
-            border-left-color: var(--accent);
-        }
-
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: var(--primary);
-        }
-
-        .notification-time {
-            font-size: 0.8rem;
-            color: var(--gray);
-        }
-
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-            z-index: 999;
-        }
-
-        .overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        /* Responsive Styles */
+        /* Responsive */
         @media (max-width: 768px) {
-            .subscription-banner {
-                flex-direction: column;
-                text-align: center;
-                gap: 20px;
-            }
-
-            .departments-container {
-                grid-template-columns: 1fr;
-            }
-
-            .notification-panel {
-                width: 100%;
-                right: -100%;
-            }
-
-            .header-container {
-                flex-wrap: wrap;
-            }
-
-            .logo {
-                margin-bottom: 10px;
+            .office-nav {
+                padding: 0 15px;
+                height: 70px;
             }
 
             .nav-right {
-                margin-left: auto;
+                gap: 10px;
             }
+
+            .nav-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .office-logo {
+                width: 40px;
+                height: 40px;
+            }
+
+            .subscription-section {
+                padding: 30px 20px;
+            }
+
+            .days-left {
+                font-size: 3rem;
+            }
+
+            .departments-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-top: 5px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="container header-container">
-            <div class="logo">
-                <img src="assets/logo.png" alt="Consistent Business Assistant Logo">
-                <div>
-                    <h1>Consistent Business Assistant</h1>
-                    <div class="motto">Keep Moving Forward</div>
-                </div>
+    <!-- Fixed Navigation -->
+    <nav class="office-nav">
+        <div class="nav-left">
+            <img src="assets/logo.png" alt="CBA Logo" class="website-logo">
+            <div class="office-name"><?php echo htmlspecialchars($office['business_name']); ?></div>
+        </div>
+
+        <div class="nav-right">
+            <div class="nav-icon" title="Access">
+                <i class="fas fa-id-card"></i>
             </div>
-            <div class="nav-right">
-                <div class="notification-icon" id="notification-icon">
-                    <i class="fas fa-bell"></i>
-                    <div class="notification-badge">3</div>
-                </div>
-                <div class="office-logo" id="office-logo">
-                    <img src="assets/office_logo.png" alt="Office Logo">
-                    <div class="dropdown-menu" id="office-dropdown">
-                        <ul>
-                            <li>
-                                <a href="#">
-                                    <i class="fas fa-cog"></i>
-                                    <span>Office Settings</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#">
-                                    <i class="fas fa-sign-out-alt"></i>
-                                    <span>Logout from Office</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+            
+            <div class="nav-icon" title="Notifications">
+                <i class="fas fa-bell"></i>
+            </div>
+
+            <div class="office-logo-container">
+                <img src="<?php echo htmlspecialchars($business_logo); ?>" 
+                     alt="Business Logo" 
+                     class="office-logo"
+                     id="office-logo-btn">
+                
+                <div class="office-dropdown" id="office-dropdown">
+                    <button id="office-settings-btn">
+                        <i class="fas fa-cog"></i>
+                        <span>Office Settings</span>
+                    </button>
+                    <button id="office-logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Office Logout</span>
+                    </button>
                 </div>
             </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Main Content -->
-    <div class="container main-content">
-        <!-- Subscription Banner -->
-        <div class="subscription-banner">
-            <div class="banner-content">
-                <h2>Your Subscription is 30 Days Left</h2>
-                <p>Renew your subscription to continue accessing all features</p>
-            </div>
-            <button class="pay-button">Pay Now</button>
-        </div>
+    <div class="container">
+        <div class="main-content">
+            <!-- Subscription Section -->
+            <section class="subscription-section">
+                <div class="subscription-info">
+                    <h2>Your Subscription Status</h2>
+                    <div class="days-left"><?php echo $days_left; ?></div>
+                    <p class="subscription-message">
+                        <?php if($days_left > 0): ?>
+                            Your subscription has <strong><?php echo $days_left; ?> days</strong> remaining
+                        <?php else: ?>
+                            Your subscription has expired. Please renew to continue access
+                        <?php endif; ?>
+                    </p>
+                    <button class="pay-now-btn">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </button>
+                </div>
+            </section>
 
-        <!-- Departments Section -->
-        <section class="departments-section">
-            <h2 class="section-title">Business Departments</h2>
-            <div class="departments-container">
+            <!-- Departments Section -->
+            <div class="departments-grid">
+                <!-- Finance Department -->
+                <div class="department-card">
+                    <div class="department-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Finance Department</h3>
+                    <p>Manage your financial operations, track expenses, generate reports, and analyze business performance metrics.</p>
+                    <button class="entry-btn">
+                        <i class="fas fa-arrow-right"></i> Enter Finance Department
+                    </button>
+                </div>
+
                 <!-- Management Department -->
-                <div class="department-card management">
-                    <div class="department-header">
-                        <div class="department-icon">
-                            <i class="fas fa-tasks"></i>
-                        </div>
-                        <h3>Management Department</h3>
-                        <p>Streamline your business operations and team management</p>
+                <div class="department-card">
+                    <div class="department-icon">
+                        <i class="fas fa-users-cog"></i>
                     </div>
-                    <div class="department-content">
-                        <ul class="features-list">
-                            <li><i class="fas fa-check"></i> Team performance tracking</li>
-                            <li><i class="fas fa-check"></i> Project management tools</li>
-                            <li><i class="fas fa-check"></i> Resource allocation</li>
-                            <li><i class="fas fa-check"></i> Strategic planning</li>
-                        </ul>
-                        <a href="#" class="enter-button">Enter Management Department</a>
-                    </div>
+                    <h3>Management Department</h3>
+                    <p>Oversee team members, assign tasks, monitor productivity, and manage organizational structure and workflows.</p>
+                    <button class="entry-btn">
+                        <i class="fas fa-arrow-right"></i> Enter Management Department
+                    </button>
                 </div>
 
                 <!-- Marketing Department -->
-                <div class="department-card marketing">
-                    <div class="department-header">
-                        <div class="department-icon">
-                            <i class="fas fa-bullhorn"></i>
-                        </div>
-                        <h3>Marketing Department</h3>
-                        <p>Develop and execute effective marketing strategies</p>
+                <div class="department-card">
+                    <div class="department-icon">
+                        <i class="fas fa-bullhorn"></i>
                     </div>
-                    <div class="department-content">
-                        <ul class="features-list">
-                            <li><i class="fas fa-check"></i> Campaign management</li>
-                            <li><i class="fas fa-check"></i> Customer analytics</li>
-                            <li><i class="fas fa-check"></i> Social media integration</li>
-                            <li><i class="fas fa-check"></i> Marketing performance reports</li>
-                        </ul>
-                        <a href="#" class="enter-button">Enter Marketing Department</a>
-                    </div>
-                </div>
-
-                <!-- Finance Department -->
-                <div class="department-card finance">
-                    <div class="department-header">
-                        <div class="department-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3>Finance Department</h3>
-                        <p>Manage your finances and track business performance</p>
-                    </div>
-                    <div class="department-content">
-                        <ul class="features-list">
-                            <li><i class="fas fa-check"></i> Financial reporting</li>
-                            <li><i class="fas fa-check"></i> Expense tracking</li>
-                            <li><i class="fas fa-check"></i> Budget planning</li>
-                            <li><i class="fas fa-check"></i> Revenue analysis</li>
-                        </ul>
-                        <a href="#" class="enter-button">Enter Finance Department</a>
-                    </div>
+                    <h3>Marketing Department</h3>
+                    <p>Create campaigns, analyze market trends, manage social media, and track customer engagement metrics.</p>
+                    <button class="entry-btn">
+                        <i class="fas fa-arrow-right"></i> Enter Marketing Department
+                    </button>
                 </div>
             </div>
-        </section>
-    </div>
 
-    <!-- Notification Panel -->
-    <div class="notification-panel" id="notification-panel">
-        <div class="panel-header">
-            <h3>Notifications</h3>
-            <button class="close-panel" id="close-notification">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="notification-list">
-            <div class="notification-item unread">
-                <div class="notification-title">New Financial Report Available</div>
-                <p>Your Q3 financial report is ready for review.</p>
-                <div class="notification-time">2 hours ago</div>
-            </div>
-            <div class="notification-item unread">
-                <div class="notification-title">Marketing Campaign Performance</div>
-                <p>Summer campaign exceeded targets by 15%.</p>
-                <div class="notification-time">1 day ago</div>
-            </div>
-            <div class="notification-item">
-                <div class="notification-title">Team Meeting Reminder</div>
-                <p>Management team meeting scheduled for tomorrow at 10 AM.</p>
-                <div class="notification-time">2 days ago</div>
-            </div>
-            <div class="notification-item">
-                <div class="notification-title">System Update Completed</div>
-                <p>The latest system update has been successfully installed.</p>
-                <div class="notification-time">3 days ago</div>
+            <!-- User Info -->
+            <div class="user-info">
+                Logged in as: <?php echo htmlspecialchars($user['fullname']); ?> | 
+                Office: <?php echo htmlspecialchars($office['business_email']); ?>
             </div>
         </div>
     </div>
 
-    <!-- Overlay -->
-    <div class="overlay" id="overlay"></div>
+    <!-- Office Settings Modal -->
+    <div class="modal" id="office-settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Office Settings</h3>
+                <button class="close-modal" id="close-settings">&times;</button>
+            </div>
+            <form method="POST" action="update_office_settings.php" enctype="multipart/form-data">
+                <input type="hidden" name="office_id" value="<?php echo $office_id; ?>">
+                
+                <div class="form-group">
+                    <label for="business-name">Business Name</label>
+                    <input type="text" id="business-name" name="business_name" 
+                           value="<?php echo htmlspecialchars($office['business_name']); ?>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="business-logo">Business Logo</label>
+                    <input type="file" id="business-logo" name="business_logo" accept=".png" class="file-input">
+                    <small>Current logo: <?php echo basename($office['business_logo']); ?></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="business-email">Business Email</label>
+                    <input type="email" id="business-email" name="business_email" 
+                           value="<?php echo htmlspecialchars($office['business_email']); ?>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="office-address">Office Address</label>
+                    <input type="text" id="office-address" name="office_address" 
+                           value="<?php echo htmlspecialchars($office['office_address']); ?>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact-number">Contact Number</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="country-code" name="country_code" style="width: 120px;">
+                            <option value="<?php echo htmlspecialchars($office['country_code']); ?>">
+                                +<?php echo htmlspecialchars($office['country_code']); ?>
+                            </option>
+                            <!-- Add country options as in create_office.php -->
+                        </select>
+                        <input type="tel" id="contact-number" name="contact_number" 
+                               value="<?php echo htmlspecialchars($office['contact_number']); ?>" required
+                               style="flex: 1;">
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" style="width: 100%; padding: 15px; margin-top: 20px;">
+                    Update Office Settings
+                </button>
+            </form>
+        </div>
+    </div>
 
     <script>
-        // Office Logo Dropdown
         document.addEventListener('DOMContentLoaded', function() {
-            const officeLogo = document.getElementById('office-logo');
+            // Office logo dropdown
+            const officeLogoBtn = document.getElementById('office-logo-btn');
             const officeDropdown = document.getElementById('office-dropdown');
             
-            officeLogo.addEventListener('click', function(e) {
+            officeLogoBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 officeDropdown.classList.toggle('active');
             });
@@ -633,41 +602,59 @@
                 officeDropdown.classList.remove('active');
             });
             
-            // Notification Panel
-            const notificationIcon = document.getElementById('notification-icon');
-            const notificationPanel = document.getElementById('notification-panel');
-            const closeNotification = document.getElementById('close-notification');
-            const overlay = document.getElementById('overlay');
+            // Office settings modal
+            const officeSettingsBtn = document.getElementById('office-settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings');
+            const officeSettingsModal = document.getElementById('office-settings-modal');
             
-            notificationIcon.addEventListener('click', function() {
-                notificationPanel.classList.add('active');
-                overlay.classList.add('active');
+            officeSettingsBtn.addEventListener('click', function() {
+                officeDropdown.classList.remove('active');
+                officeSettingsModal.classList.add('active');
             });
             
-            closeNotification.addEventListener('click', function() {
-                notificationPanel.classList.remove('active');
-                overlay.classList.remove('active');
+            closeSettingsBtn.addEventListener('click', function() {
+                officeSettingsModal.classList.remove('active');
             });
             
-            overlay.addEventListener('click', function() {
-                notificationPanel.classList.remove('active');
-                overlay.classList.remove('active');
+            // Office logout
+            const officeLogoutBtn = document.getElementById('office-logout-btn');
+            
+            officeLogoutBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to log out of this office?')) {
+                    window.location.href = 'logout_office.php';
+                }
             });
             
-            // Pay Button Action
-            const payButton = document.querySelector('.pay-button');
-            payButton.addEventListener('click', function() {
-                alert('Payment processing would be implemented here');
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === officeSettingsModal) {
+                    officeSettingsModal.classList.remove('active');
+                }
             });
             
-            // Department Enter Buttons
-            const enterButtons = document.querySelectorAll('.enter-button');
-            enterButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
+            // Department buttons (placeholder functionality)
+            document.querySelectorAll('.entry-btn').forEach(button => {
+                button.addEventListener('click', function() {
                     const department = this.closest('.department-card').querySelector('h3').textContent;
-                    alert(`Entering ${department} - This would navigate to the department dashboard in a real application`);
+                    alert(`Entering ${department} - Feature coming soon!`);
                 });
+            });
+            
+            // Access and Notification buttons (placeholder)
+            document.querySelectorAll('.nav-icon').forEach(icon => {
+                if (!icon.querySelector('.fa-id-card') && !icon.querySelector('.fa-bell')) {
+                    return;
+                }
+                
+                icon.addEventListener('click', function() {
+                    const title = this.getAttribute('title');
+                    alert(`${title} feature is under development!`);
+                });
+            });
+            
+            // Pay Now button
+            document.querySelector('.pay-now-btn').addEventListener('click', function() {
+                alert('Payment gateway integration coming soon!');
             });
         });
     </script>
