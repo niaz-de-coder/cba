@@ -87,22 +87,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     
     // Insert into database
+    // Use created_by (user id) instead of user_email to match existing schema
+    $created_by = isset($user_id) ? (int) $user_id : NULL;
     $insert_sql = "INSERT INTO user_finance_entry (
-        office_email, 
-        user_email, 
-        entry_type, 
-        document_path, 
-        entry_date, 
-        debit_account, 
-        credit_account, 
-        transaction_amount, 
-        currency, 
-        reference, 
+        office_email,
+        created_by,
+        entry_type,
+        document_path,
+        entry_date,
+        debit_account,
+        credit_account,
+        transaction_amount,
+        currency,
+        reference,
         comments,
         status
     ) VALUES (
         '$office_email',
-        '$user_email',
+        '$created_by',
         '$entry_type',
         '$document_path',
         '$mysql_date',
@@ -118,9 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (mysqli_query($conn, $insert_sql)) {
         $entry_id = mysqli_insert_id($conn);
         
-        // Log the activity
-        $log_sql = "INSERT INTO finance_logs (entry_id, office_email, user_email, action, timestamp) 
-                   VALUES ('$entry_id', '$office_email', '$user_email', 'created', NOW())";
+        // Log the activity (finance_logs schema uses entry_id, office_email, action, timestamp)
+        $log_sql = "INSERT INTO finance_logs (entry_id, office_email, action, timestamp) 
+               VALUES ('$entry_id', '$office_email', 'created', NOW())";
         mysqli_query($conn, $log_sql);
         
         echo "<script>

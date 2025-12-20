@@ -3,10 +3,22 @@ require_once 'config.php';
 check_login(); // Ensure user is logged in
 
 // Get user information from database
-$user_id = $_SESSION['user_id'];
+// Ensure session user_id exists and is an integer
+$user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
 $sql = "SELECT * FROM user_list WHERE id = '$user_id'";
 $result = mysqli_query($conn, $sql);
 $user = mysqli_fetch_assoc($result);
+
+// If user record isn't found, clear the session and redirect to the login page
+if (!$user) {
+    // Defensive: clear session and redirect to login (prevents trying to access null offsets)
+    $_SESSION = array();
+    if (session_status() !== PHP_SESSION_NONE) {
+        session_destroy();
+    }
+    header("Location: user.php");
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
