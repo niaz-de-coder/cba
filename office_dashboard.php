@@ -492,7 +492,7 @@ $business_logo = !empty($office['business_logo']) ? $office['business_logo'] : '
                     </div>
                     <h3>Finance Department</h3>
                     <p>Manage your financial operations, track expenses, generate reports, and analyze business performance metrics.</p>
-                    <button class="entry-btn">
+                    <button class="entry-btn" id="finance-department-btn">
                         <i class="fas fa-arrow-right"></i> Enter Finance Department
                     </button>
                 </div>
@@ -633,7 +633,30 @@ $business_logo = !empty($office['business_logo']) ? $office['business_logo'] : '
             });
             
             // Department buttons (placeholder functionality)
-            document.querySelectorAll('.entry-btn').forEach(button => {
+            // document.querySelectorAll('.entry-btn').forEach(button => {
+            //     button.addEventListener('click', function() {
+            //         const department = this.closest('.department-card').querySelector('h3').textContent;
+            //         alert(`Entering ${department} - Feature coming soon!`);
+            //     });
+            // });
+
+
+
+            // Finance Department button with subscription check
+            const financeBtn = document.getElementById('finance-department-btn');
+            if (financeBtn) {
+                financeBtn.addEventListener('click', function() {
+                    const daysLeft = <?php echo $days_left; ?>;
+                    if (daysLeft > 0) {
+                        window.location.href = 'finance.php';
+                    } else {
+                        alert('Your subscription has expired. Please renew to access the Finance Department.');
+                    }
+                });
+            }
+
+            // Other department buttons (placeholder functionality)
+            document.querySelectorAll('.entry-btn:not(#finance-department-btn)').forEach(button => {
                 button.addEventListener('click', function() {
                     const department = this.closest('.department-card').querySelector('h3').textContent;
                     alert(`Entering ${department} - Feature coming soon!`);

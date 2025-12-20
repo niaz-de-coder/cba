@@ -65,3 +65,4 @@ CREATE TABLE IF NOT EXISTS office_request (
     INDEX idx_status (status)
 );
 
+in "office_dashboard.php" onclick access button hyperlink to "access_office.php", in "access_office.php" there should be a button to go back to "office_dashboard.php", in "access_office.php" there should be three lists: waiting, rejected and banned, in waiting list there will be user information from office_request
